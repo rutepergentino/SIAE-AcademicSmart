@@ -1,0 +1,406 @@
+import heapq  # Biblioteca para trabalhar com filas de prioridade (heap)
+from datetime import datetime, timedelta  # Manipulação de datas e horários
+
+class SistemaAcademico:
+    def __init__(self):
+        # Inicializa os atributos principais do sistema
+        self.periodo = ""  # Período acadêmico atual (ex: 2025.2)
+        # Dicionário que armazena matérias e seus conteúdos (tópicos e anotações)
+        self.materias = {}  # Exemplo: {"Matemática": {"topicos": [], "anotacoes": []}}
+        # Dicionário para tópicos gerais, que podem estar relacionados a várias matérias
+        self.topicos_gerais = {}  # Exemplo: {"Álgebra": ["Matemática", "Física"]}
+        # Lista de avaliações, armazenadas como tuplas com data, matéria, tipo e nome
+        self.avaliacoes = []  # Usada como fila de prioridade (heap)
+        # Lista de anotações gerais, que não pertencem a nenhuma matéria específica
+        self.anotacoes_gerais = []
+
+    # --- Configuração Inicial ---
+    def perguntar_periodo(self):
+        # Solicita ao usuário o período acadêmico atual
+        print("\n--- CONFIGURAÇÃO INICIAL ---")
+        self.periodo = input("Em qual período você está? (Ex: 20253.2): ").strip()
+        print(f"Período {self.periodo} registrado com sucesso!")
+
+    # --- Cadastro de Matérias ---
+    def cadastrar_materias(self):
+        # Permite cadastrar novas matérias até o usuário digitar 'sair'
+        print("\n--- CADASTRO DE MATÉRIAS ---")
+        while True:
+            nome = input("\nNome da matéria (ou 'sair' para terminar): ").strip()
+            if nome.lower() == 'sair':  # Sai do loop se o usuário quiser
+                break
+            
+            if nome in self.materias:  # Verifica se a matéria já foi cadastrada
+                print(f"Matéria '{nome}' já existe!")
+                continue  # Volta para o início do loop
+            
+            # Cria uma nova entrada para a matéria com listas vazias para tópicos e anotações
+            self.materias[nome] = {"topicos": [], "anotacoes": []}
+            print(f"Matéria '{nome}' cadastrada com sucesso!")
+            
+            # Dá a opção de já adicionar tópicos e anotações para a matéria cadastrada
+            self.gerenciar_conteudo_materia(nome)
+
+    def gerenciar_conteudo_materia(self, materia):
+        # Menu para gerenciar tópicos e anotações de uma matéria específica
+        while True:
+            print(f"\n--- Gerenciando {materia} ---")
+            print("1. Adicionar tópicos")
+            print("2. Adicionar anotação")
+            print("3. Ver conteúdo")
+            print("0. Voltar")
+            
+            opcao = input("Escolha: ").strip()
+            
+            if opcao == "1":
+                self.adicionar_topicos(materia)
+            elif opcao == "2":
+                self.adicionar_anotacao(materia)
+            elif opcao == "3":
+                self.mostrar_conteudo_materia(materia)
+            elif opcao == "0":
+                break  # Sai do menu de gerenciamento da matéria
+            else:
+                print("Opção inválida!")
+
+    # --- Sistema de Tópicos ---
+    def adicionar_topicos(self, materia):
+        # Permite adicionar vários tópicos à matéria até digitar 'sair'
+        print(f"\n--- Adicionando tópicos a {materia} ---")
+        while True:
+            topico = input("Digite um tópico (ou 'sair' para terminar): ").strip()
+            if topico.lower() == 'sair':
+                break
+                
+            # Verifica se o tópico já está na lista para evitar duplicidade
+            if topico not in self.materias[materia]["topicos"]:
+                self.materias[materia]["topicos"].append(topico)
+                
+                # Também registra o tópico no dicionário geral de tópicos
+                if topico not in self.topicos_gerais:
+                    self.topicos_gerais[topico] = []
+                if materia not in self.topicos_gerais[topico]:
+                    self.topicos_gerais[topico].append(materia)
+                
+                print(f"Tópico '{topico}' adicionado!")
+            else:
+                print("Este tópico já existe nesta matéria!")
+
+    def cadastrar_topico_independente(self):
+        # Permite criar tópicos que não pertencem inicialmente a nenhuma matéria
+        print("\n--- CADASTRO DE TÓPICOS INDEPENDENTES ---")
+        while True:
+            topico = input("\nDigite o tópico (ou 'sair' para terminar): ").strip()
+            if topico.lower() == 'sair':
+                break
+            
+            # Se já existe, mostra as matérias relacionadas
+            if topico in self.topicos_gerais:
+                print("Tópico já existe! Matérias relacionadas:")
+                for m in self.topicos_gerais[topico]:
+                    print(f"- {m}")
+            else:
+                # Cria novo tópico geral
+                self.topicos_gerais[topico] = []
+                print(f"Tópico '{topico}' criado!")
+            
+            # Pergunta se quer vincular o tópico a alguma matéria
+            print("\nDeseja vincular a alguma matéria? (s/n)")
+            if input().lower() == 's':
+                materia = input("Digite o nome da matéria: ").strip()
+                if materia not in self.materias:
+                    print("Matéria não encontrada. Criando nova...")
+                    self.materias[materia] = {"topicos": [], "anotacoes": []}
+                
+                if topico not in self.materias[materia]["topicos"]:
+                    self.materias[materia]["topicos"].append(topico)
+                    self.topicos_gerais[topico].append(materia)
+                    print(f"Vinculado a '{materia}'!")
+                else:
+                    print("Já está vinculado!")
+
+    # --- Sistema de Anotações ---
+    def adicionar_anotacao(self, materia=None):
+        # Adiciona uma anotação para uma matéria específica ou geral
+        if materia:
+            print(f"\n--- NOVA ANOTAÇÃO PARA {materia.upper()} ---")
+            # Registra a data e hora atual da anotação
+            data = datetime.now().strftime("%d/%m/%Y %H:%M")
+            texto = input("Digite sua anotação:\n")
+            # Salva a anotação na lista da matéria
+            self.materias[materia]["anotacoes"].append({"data": data, "texto": texto})
+            print("Anotação salva!")
+        else:
+            # Caso a anotação não seja vinculada a matéria, é geral
+            print("\n--- ANOTAÇÃO GERAL ---")
+            data = datetime.now().strftime("%d/%m/%Y %H:%M")
+            titulo = input("Título: ").strip()
+            texto = input("Conteúdo:\n")
+            self.anotacoes_gerais.append({"data": data, "titulo": titulo, "texto": texto})
+            print("Anotação geral salva!")
+
+    def mostrar_anotacoes(self, materia=None):
+        # Exibe as anotações de uma matéria específica ou as gerais
+        if materia:
+            print(f"\n--- ANOTAÇÕES DE {materia.upper()} ---")
+            for i, anot in enumerate(self.materias[materia]["anotacoes"], 1):
+                print(f"\n{i}. [{anot['data']}]")
+                print(anot["texto"])
+        else:
+            print("\n--- ANOTAÇÕES GERAIS ---")
+            for i, anot in enumerate(self.anotacoes_gerais, 1):
+                print(f"\n{i}. [{anot['data']}] {anot['titulo']}")
+                print(anot["texto"])
+
+    # --- Sistema de Avaliações ---
+    def cadastrar_avaliacoes(self):
+        # Permite cadastrar avaliações para cada matéria com data e tipo
+        print("\n--- CADASTRO DE AVALIAÇÕES ---")
+        for materia in self.materias:
+            while True:
+                print(f"\nMatéria: {materia}")
+                tipo = input("Tipo (prova/trabalho/outro) ou 'pular': ").lower()
+                if tipo == 'pular':  # Permite pular para próxima matéria
+                    break
+                
+                nome = input("Nome da avaliação: ").strip()
+                while True:
+                    data_str = input("Data (dd/mm/aaaa): ").strip()
+                    try:
+                        # Converte string para objeto datetime
+                        data = datetime.strptime(data_str, "%d/%m/%Y")
+                        break
+                    except:
+                        print("Formato inválido! Use dd/mm/aaaa")
+                
+                # Insere a avaliação na fila de prioridade, ordenada por data
+                heapq.heappush(self.avaliacoes, (data, materia, tipo, nome))
+                print(f"Avaliação '{nome}' agendada para {data_str}!")
+
+    def calcular_prioridades(self):
+        # Exibe a lista de avaliações organizadas por prioridade (data mais próxima)
+        print("\n--- LISTA DE PRIORIDADES ---")
+        if not self.avaliacoes:
+            print("Nenhuma avaliação cadastrada!")
+            return
+        
+        hoje = datetime.now()
+        print("\nPróximas avaliações:")
+        # Ordena as avaliações para exibição
+        for i, (data, materia, tipo, nome) in enumerate(sorted(self.avaliacoes)):
+            dias = (data - hoje).days  # Calcula dias restantes
+            # Define o status com base na proximidade da data
+            status = "❗ URGENTE" if dias <= 3 else "⚠️ PRÓXIMO" if dias <= 7 else f"⌛ {dias} dias"
+            print(f"\n{i+1}. {materia} - {nome} ({tipo})")
+            print(f"   Data: {data.strftime('%d/%m/%Y')} | {status}")
+            
+            # Se a avaliação está próxima, sugere tópicos para revisar
+            if dias <= 5:
+                print("   Tópicos para revisar:")
+                for topico in self.materias[materia]["topicos"]:
+                    print(f"   - {topico}")
+
+    # --- Sistema de Buscas ---
+    def buscar_materia(self):
+        # Busca matérias pelo nome ou parte dele
+        print("\n--- BUSCA DE MATÉRIA ---")
+        termo = input("Digite o nome ou parte: ").strip().lower()
+        # Filtra matérias que contenham o termo digitado
+        encontradas = [m for m in self.materias if termo in m.lower()]
+        
+        if not encontradas:
+            print("Nenhuma matéria encontrada!")
+            return
+        
+        print("\nMatérias encontradas:")
+        for i, materia in enumerate(encontradas, 1):
+            print(f"{i}. {materia}")
+        
+        print("\n0. Voltar")
+        opcao = input("Selecione uma para detalhes: ").strip()
+        if opcao.isdigit() and int(opcao) > 0:
+            materia = encontradas[int(opcao)-1]
+            # Exibe conteúdo da matéria e permite gerenciar
+            self.mostrar_conteudo_materia(materia)
+            self.gerenciar_conteudo_materia(materia)
+
+    def buscar_topicos(self):
+        # Busca tópicos em matérias e tópicos independentes
+        print("\n--- BUSCA DE TÓPICOS ---")
+        termo = input("Termo de busca: ").strip().lower()
+        encontrados = False
+        
+        print("\nNas matérias:")
+        for materia, conteudo in self.materias.items():
+            matches = [t for t in conteudo["topicos"] if termo in t.lower()]
+            if matches:
+                encontrados = True
+                print(f"\n{materia}:")
+                for topico in matches:
+                    print(f"- {topico}")
+        
+        print("\nTópicos independentes:")
+        for topico, materias in self.topicos_gerais.items():
+            # Exibe tópicos que não pertencem a nenhuma matéria
+            if termo in topico.lower() and not materias:
+                encontrados = True
+                print(f"- {topico}")
+        
+        if not encontrados:
+            print("Nenhum tópico encontrado.")
+
+    # --- Visualização ---
+    def mostrar_conteudo_materia(self, materia):
+        # Exibe tópicos e anotações de uma matéria
+        print(f"\n--- CONTEÚDO DE {materia.upper()} ---")
+        print("\nTópicos:")
+        for i, topico in enumerate(self.materias[materia]["topicos"], 1):
+            print(f"{i}. {topico}")
+        
+        self.mostrar_anotacoes(materia)
+
+    def mostrar_topicos_gerais(self):
+        # Exibe os tópicos independentes que não estão vinculados a nenhuma matéria
+        print("\n--- TÓPICOS INDEPENDENTES ---")
+        for topico, materias in self.topicos_gerais.items():
+            if not materias:
+                print(f"- {topico}")
+
+    # --- Menu Principal ---
+    def menu_principal(self):
+        # Loop principal que mostra as opções do sistema até o usuário sair
+        while True:
+            print("\n=== SISTEMA ACADÊMICO ===")
+            print(f"Período: {self.periodo}" if self.periodo else "Período: Não definido\n")
+            print("1. Configurar período")
+            print("2. Matérias")
+            print("3. Tópicos independentes")
+            print("4. Anotações gerais")
+            print("5. Avaliações")
+            print("6. Buscas")
+            print("0. Sair")
+            
+            opcao = input("\nOpção: ").strip()
+            
+            if opcao == "1":
+                self.perguntar_periodo()
+            elif opcao == "2":
+                self.submenu_materias()
+            elif opcao == "3":
+                self.submenu_topicos()
+            elif opcao == "4":
+                self.submenu_anotacoes()
+            elif opcao == "5":
+                self.submenu_avaliacoes()
+            elif opcao == "6":
+                self.submenu_buscas()
+            elif opcao == "0":
+                print("\nSistema encerrado. Bons estudos!")
+                break
+            else:
+                print("Opção inválida!")
+
+    # Submenus para cada funcionalidade (matérias, tópicos, anotações, avaliações, buscas)
+    def submenu_materias(self):
+        while True:
+            print("\n--- MATÉRIAS ---")
+            print("1. Cadastrar novas")
+            print("2. Listar todas")
+            print("3. Gerenciar existente")
+            print("0. Voltar")
+            
+            opcao = input("Opção: ").strip()
+            
+            if opcao == "1":
+                self.cadastrar_materias()
+            elif opcao == "2":
+                print("\n--- SUAS MATÉRIAS ---")
+                for i, materia in enumerate(self.materias, 1):
+                    print(f"{i}. {materia}")
+            elif opcao == "3":
+                self.buscar_materia()
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida!")
+
+    def submenu_topicos(self):
+        while True:
+            print("\n--- TÓPICOS ---")
+            print("1. Cadastrar independentes")
+            print("2. Listar independentes")
+            print("0. Voltar")
+            
+            opcao = input("Opção: ").strip()
+            
+            if opcao == "1":
+                self.cadastrar_topico_independente()
+            elif opcao == "2":
+                self.mostrar_topicos_gerais()
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida!")
+
+    def submenu_anotacoes(self):
+        while True:
+            print("\n--- ANOTAÇÕES ---")
+            print("1. Nova anotação geral")
+            print("2. Ver anotações gerais")
+            print("0. Voltar")
+            
+            opcao = input("Opção: ").strip()
+            
+            if opcao == "1":
+                self.adicionar_anotacao()
+            elif opcao == "2":
+                self.mostrar_anotacoes()
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida!")
+
+    def submenu_avaliacoes(self):
+        while True:
+            print("\n--- AVALIAÇÕES ---")
+            print("1. Cadastrar")
+            print("2. Listar prioridades")
+            print("0. Voltar")
+            
+            opcao = input("Opção: ").strip()
+            
+            if opcao == "1":
+                self.cadastrar_avaliacoes()
+            elif opcao == "2":
+                self.calcular_prioridades()
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida!")
+
+    def submenu_buscas(self):
+        while True:
+            print("\n--- BUSCAS ---")
+            print("1. Buscar matéria")
+            print("2. Buscar tópicos")
+            print("0. Voltar")
+            
+            opcao = input("Opção: ").strip()
+            
+            if opcao == "1":
+                self.buscar_materia()
+            elif opcao == "2":
+                self.buscar_topicos()
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida!")
+
+# --- Execução ---
+if __name__ == "__main__":
+    print("=== SISTEMA DE ORGANIZAÇÃO ACADÊMICA ===")
+    print("Desenvolvido para seu sucesso universitário!\n")
+    
+    # Instancia e inicia o sistema
+    sistema = SistemaAcademico()
+    sistema.menu_principal()
